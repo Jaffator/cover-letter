@@ -187,7 +187,7 @@
       <li><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 7L2 7"/></svg><a href="mailto:jardalufi@gmail.com" data-field="email">jardalufi@gmail.com</a></li>
       <li><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg><a href="https://jaffator.github.io/cv/" target="_blank" rel="noopener">CV: <span data-field="cvLabel">jaffator.github.io/cv</span></a></li>
       <li><svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg><a href="https://bit.ly/4ARiZm3" target="_blank" rel="noopener">LinkedIn: <span data-field="liLabel">bit.ly/4ARiZm3</span></a></li>
-      <li><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg><a href="https://bikecheck.cloud" target="_blank" rel="noopener">Latest: <span data-field="projLabel">bikecheck.cloud</span></a></li>
+      <li><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg><a href="https://bikecheck.cloud" target="_blank" rel="noopener">Work: <span data-field="projLabel">bikecheck.cloud</span></a></li>
     </ul>
   </header>
 
@@ -434,7 +434,7 @@
       [field('email'), 'mailto:' + field('email')],
       ['CV: ' + field('cvLabel'), 'https://jaffator.github.io/cv/'],
       ['LinkedIn: ' + field('liLabel'), 'https://bit.ly/4ARiZm3'],
-      ['Latest: ' + field('projLabel'), 'https://bikecheck.cloud'],
+      ['Work: ' + field('projLabel'), 'https://bikecheck.cloud'],
     ];
     contacts.forEach(([t, url], i) => put(t, R, 23 + i * 4.9, 'Inter', 'normal', 9.5, C.muted, { url, align: 'right' }));
     put(field('name'), L, 34, 'Rubik', 'bold', 22, C.teal);
