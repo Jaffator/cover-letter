@@ -123,9 +123,9 @@
   }
 
   /* Letter body */
-  .letter p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.65; text-indent: 2.2em; }
+  .letter p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.65; text-indent: 2.2em; text-align: justify; }
+  .letter p.salutation { text-align: left; }
   .letter p.salutation { font-weight: 500; margin-bottom: 16px; text-indent: 0; }
-  .letter p.lead { font-size: 15.5px; }
 
   /* Closing */
   .closing { margin-top: 26px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
@@ -162,7 +162,6 @@
     .sheet { max-width: none; width: 210mm; height: 296mm; margin: 0; padding: 18mm 18mm 16mm 20mm; box-shadow: none; overflow: hidden; page-break-after: avoid; }
     .sheet::before { width: 2.5mm; }
     .letter p { font-size: 11pt; line-height: 1.55; margin-bottom: 9pt; }
-    .letter p.lead { font-size: 11.5pt; }
   </style>
 </head>
 <body>
@@ -396,9 +395,18 @@
       } else { line.push(tok); lineW += w; }
     });
     lines.forEach((line, i) => {
-      let cx = x + (i === 0 ? indent : 0);
+      while (line.length && line[line.length - 1].space) line.pop();
+      const start = i === 0 ? indent : 0;
+      // justify: spread the leftover width over the spaces, except on the last line
+      let extra = 0;
+      if (i < lines.length - 1) {
+        const natural = line.reduce((sum, tok) => sum + measure(tok), start);
+        const gaps = line.filter(tok => tok.space).length;
+        if (gaps) extra = Math.max(0, width - natural) / gaps;
+      }
+      let cx = x + start;
       line.forEach(tok => {
-        const w = measure(tok);
+        const w = measure(tok) + (tok.space ? extra : 0);
         if (!tok.space) {
           doc.setTextColor(...(tok.bold ? C.teal : color));
           doc.text(tok.t, cx, y);
@@ -466,7 +474,7 @@
     const paras = ['p1', 'p2', 'pull', 'p3', 'p4'];
     paras.forEach((name, i) => {
       const el = document.querySelector('[data-field="' + name + '"]');
-      const size = i === 0 ? bodyPt + 0.5 : bodyPt;
+      const size = bodyPt;
       y = paragraph(doc, el, L, y, W, size, lh, C.ink, mm(size) * 2.2);
       y += gap;
     });
