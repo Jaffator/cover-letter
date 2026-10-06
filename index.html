@@ -125,7 +125,7 @@
   /* Letter body */
   .letter p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.65; }
   .letter p.salutation { font-weight: 500; margin-bottom: 16px; }
-  .letter p.lead { font-size: 15.5px; }
+  .letter p.lead { font-size: 15.5px; text-indent: 2.2em; }
   .letter strong { font-weight: 600; color: var(--teal); }
 
   /* Closing */
@@ -180,7 +180,7 @@
 <body>
 
 <div class="toolbar" role="toolbar" aria-label="Nástroje">
-  <div class="hint"><strong>Motivační dopis</strong> · <span class="status" id="status" aria-live="polite"></span><span id="hintText">Export do PDF otevře tiskový dialog – zvolte „Uložit jako PDF“.</span></div>
+  <div class="hint"><strong>Motivační dopis</strong> · <span class="status" id="status" aria-live="polite"></span><span id="hintText">Export do PDF stáhne dopis v aktuálním znění jako soubor PDF.</span></div>
   <button type="button" id="editBtn">Upravit text</button>
   <button type="button" id="doneBtn" hidden class="primary">Hotovo</button>
   <button type="button" id="resetBtn" hidden>Obnovit původní</button>
@@ -307,7 +307,7 @@
     resetBtn.hidden = !on;
     hintText.textContent = on
       ? 'Klikněte do textu a přepište ho. Změny se ukládají jen v tomto prohlížeči.'
-      : 'Export do PDF otevře tiskový dialog – zvolte „Uložit jako PDF“.';
+      : 'Export do PDF stáhne dopis v aktuálním znění jako soubor PDF.';
   }
 
   fields.forEach(el => {
@@ -328,13 +328,191 @@
     try { localStorage.removeItem(KEY); } catch (e) {}
     flash('Původní text obnoven');
   });
-  pdfBtn.addEventListener('click', () => {
+  /* ---------- PDF export (jsPDF, vector text, embedded fonts) ---------- */
+  const FONTS = [
+    ['Rubik-Medium.ttf',   'Rubik',  'normal'],
+    ['Rubik-SemiBold.ttf', 'Rubik',  'bold'],
+    ['Inter-Regular.ttf',  'Inter',  'normal'],
+    ['Inter-Medium.ttf',   'Inter',  'bold'],
+    ['Caveat-Medium.ttf',  'Caveat', 'normal'],
+  ];
+  const C = {
+    teal: [0, 102, 102], accent: [26, 176, 179], soft: [227, 244, 244],
+    ink: [43, 47, 47], muted: [107, 118, 118], rule: [217, 224, 224],
+  };
+  let libPromise, fontCache;
+
+  function loadLib() {
+    if (window.jspdf) return Promise.resolve();
+    return libPromise ||= new Promise((res, rej) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js';
+      sc.onload = res; sc.onerror = () => rej(new Error('Knihovnu pro PDF se nepodařilo načíst.'));
+      document.head.appendChild(sc);
+    });
+  }
+  function toBase64(buf) {
+    const bytes = new Uint8Array(buf); let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  function loadFonts() {
+    return fontCache ||= Promise.all(FONTS.map(async ([file]) => {
+      const r = await fetch('assets/fonts/' + file);
+      if (!r.ok) throw new Error('Písmo ' + file + ' se nepodařilo načíst.');
+      return toBase64(await r.arrayBuffer());
+    }));
+  }
+
+  const text = el => el.textContent.replace(/\s+/g, ' ').trim();
+  const field = name => text(document.querySelector('[data-field="' + name + '"]'));
+  function runs(el) {           // [{t, bold}] from a paragraph, keeping <strong>
+    const out = [];
+    const walk = (node, bold) => {
+      if (node.nodeType === 3) out.push({ t: node.textContent, bold });
+      else if (node.nodeType === 1) {
+        const b = bold || node.tagName === 'STRONG' || node.tagName === 'B';
+        if (node.tagName === 'BR') out.push({ t: ' ', bold });
+        node.childNodes.forEach(n => walk(n, b));
+      }
+    };
+    walk(el, false);
+    return out;
+  }
+
+  // Lays out runs as word-wrapped lines; returns the y after the last line.
+  function paragraph(doc, el, x, y, width, size, lh, color, indent = 0) {
+    const tokens = [];
+    runs(el).forEach(r => {
+      r.t.split(/(\s+)/).forEach(part => {
+        if (!part) return;
+        tokens.push({ t: part, bold: r.bold, space: /^\s+$/.test(part) });
+      });
+    });
+    const measure = tok => {
+      doc.setFont('Inter', tok.bold ? 'bold' : 'normal'); doc.setFontSize(size);
+      return doc.getTextWidth(tok.space ? ' ' : tok.t);
+    };
+    const lines = [[]]; let lineW = indent;
+    tokens.forEach(tok => {
+      const w = measure(tok);
+      const line = lines[lines.length - 1];
+      if (tok.space) { if (line.length) { line.push(tok); lineW += w; } return; }
+      if (lineW + w > width && line.length) {
+        while (line.length && line[line.length - 1].space) line.pop();
+        lines.push([tok]); lineW = w;
+      } else { line.push(tok); lineW += w; }
+    });
+    lines.forEach((line, i) => {
+      let cx = x + (i === 0 ? indent : 0);
+      line.forEach(tok => {
+        const w = measure(tok);
+        if (!tok.space) {
+          doc.setTextColor(...(tok.bold ? C.teal : color));
+          doc.text(tok.t, cx, y);
+        }
+        cx += w;
+      });
+      y += lh;
+    });
+    return y;
+  }
+
+  function render(doc, bodyPt) {
+    const L = 20, R = 192, W = R - L;
+    const mm = pt => pt * 0.3528;
+    const put = (str, x, y, font, style, size, color, opt = {}) => {
+      doc.setFont(font, style); doc.setFontSize(size); doc.setTextColor(...color);
+      if (opt.url) {
+        const w = doc.getTextWidth(str);
+        doc.textWithLink(str, opt.align === 'right' ? x - w : x, y, { url: opt.url });
+      } else doc.text(str, x, y, opt);
+    };
+
+    // accent bar with a vertical gradient
+    for (let i = 0; i < 80; i++) {
+      const k = i / 79;
+      doc.setFillColor(...C.accent.map((v, j) => Math.round(v + (C.teal[j] - v) * k)));
+      doc.rect(0, i * 297 / 80, 2.5, 297 / 80 + 0.2, 'F');
+    }
+
+    // header
+    const contacts = [
+      [field('phone'), 'tel:' + field('phone').replace(/\s+/g, '')],
+      [field('email'), 'mailto:' + field('email')],
+      ['CV: ' + field('cvLabel'), 'https://jaffator.github.io/cv/'],
+      ['LinkedIn: ' + field('liLabel'), 'https://bit.ly/4ARiZm3'],
+      ['Projekt: ' + field('projLabel'), 'https://bikecheck.cloud'],
+    ];
+    contacts.forEach(([t, url], i) => put(t, R, 23 + i * 4.9, 'Inter', 'normal', 9.5, C.muted, { url, align: 'right' }));
+    put(field('name'), L, 34, 'Rubik', 'bold', 22, C.teal);
+    doc.setCharSpace(0.45);
+    put(field('role').toUpperCase(), L, 42.6, 'Rubik', 'normal', 9.5, C.muted);
+    doc.setCharSpace(0);
+    doc.setDrawColor(...C.rule); doc.setLineWidth(0.25); doc.line(L, 48, R, 48);
+
+    // meta
+    doc.setCharSpace(0.35);
+    put('KOMU', L, 55, 'Rubik', 'normal', 8, C.muted);
+    put('MÍSTO A DATUM', R, 55, 'Rubik', 'normal', 8, C.muted, { align: 'right' });
+    doc.setCharSpace(0);
+    put(field('recipient'), L, 60.2, 'Rubik', 'normal', 11, C.ink);
+    put(field('company'), L, 64.8, 'Inter', 'normal', 9.5, C.muted);
+    put(field('date'), R, 60.2, 'Rubik', 'normal', 11, C.ink, { align: 'right' });
+
+    // subject chip
+    doc.setFont('Rubik', 'normal'); doc.setFontSize(10.5);
+    const subj = field('subject'), sw = doc.getTextWidth(subj);
+    doc.setFillColor(...C.soft); doc.roundedRect(L, 70.5, sw + 8, 7.6, 1.5, 1.5, 'F');
+    put(subj, L + 4, 75.6, 'Rubik', 'normal', 10.5, C.teal);
+
+    // letter
+    const lh = mm(bodyPt * 1.55), gap = mm(9);
+    let y = 86;
+    put(field('salutation'), L, y, 'Inter', 'bold', bodyPt, C.ink);
+    y += lh + mm(5);
+    const paras = ['p1', 'p2', 'pull', 'p3', 'p4'];
+    paras.forEach((name, i) => {
+      const el = document.querySelector('[data-field="' + name + '"]');
+      const size = i === 0 ? bodyPt + 0.5 : bodyPt;
+      y = paragraph(doc, el, L, y, W, size, lh, C.ink, i === 0 ? mm(size) * 2.2 : 0);
+      y += gap;
+    });
+
+    // closing
+    y += mm(6);
+    put(field('thanks'), L, y, 'Inter', 'normal', bodyPt, C.ink); y += lh;
+    put(field('regards'), L, y, 'Inter', 'normal', bodyPt, C.ink); y += lh + 5.5;
+    put(field('signature'), L, y, 'Caveat', 'normal', 26, C.teal); y += 5.5;
+    put(field('printed'), L, y, 'Rubik', 'normal', 9.5, C.muted);
+    return y;
+  }
+
+  async function exportPdf() {
     if (body.classList.contains('editing')) setEditing(false);
-    const prev = document.title;
-    document.title = 'Motivacni_dopis_Jaroslav_Lufinka';
-    window.print();
-    document.title = prev;
-  });
+    pdfBtn.disabled = true; const label = pdfBtn.textContent; pdfBtn.textContent = 'Generuji…';
+    try {
+      const [, fonts] = await Promise.all([loadLib(), loadFonts()]);
+      const { jsPDF } = window.jspdf;
+      let doc, size = 11;
+      for (;;) {                       // shrink the body text if a long letter would overflow
+        doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+        FONTS.forEach(([file, name, style], i) => { doc.addFileToVFS(file, fonts[i]); doc.addFont(file, name, style); });
+        doc.setProperties({ title: 'Motivační dopis – ' + field('name'), author: field('name'), subject: field('subject') });
+        const end = render(doc, size);
+        if (end <= 283 || size <= 9) break;
+        size -= 0.5;
+      }
+      doc.save('Motivacni_dopis_Jaroslav_Lufinka.pdf');
+      flash('PDF staženo');
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Export do PDF se nezdařil.');
+    } finally {
+      pdfBtn.disabled = false; pdfBtn.textContent = label;
+    }
+  }
+  pdfBtn.addEventListener('click', exportPdf);
 
   if (load()) flash('Načteny vaše úpravy');
 })();

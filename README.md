@@ -6,9 +6,9 @@ Live: https://jaffator.github.io/cover-letter/
 
 - **Upravit text** – zapne úpravy přímo ve stránce (oslovení, firma, datum, odstavce…). Změny se ukládají do `localStorage` daného prohlížeče, výchozí text v repozitáři se nemění.
 - **Obnovit původní** – zahodí úpravy z prohlížeče.
-- **Export do PDF** – otevře tiskový dialog nastavený na A4 bez okrajů; v něm zvolte *Uložit jako PDF*.
+- **Export do PDF** – poskládá dopis v aktuálním znění do PDF přímo v prohlížeči (jsPDF, vektorový text, písma z `assets/fonts`) a stáhne `Motivacni_dopis_Jaroslav_Lufinka.pdf`. Rozvržení PDF je v `index.html` ve funkci `render`, nezávisle na CSS.
 
-Trvalou změnu textu udělejte v `index.html` (každé editovatelné místo má atribut `data-field`).
+Písma jsou statické TTF z Google Fonts (podmnožina latin + latin-ext). Trvalou změnu textu udělejte v `index.html` (každé editovatelné místo má atribut `data-field`).
 
 ## Náhled
 
