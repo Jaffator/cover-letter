@@ -131,17 +131,7 @@
   .closing { margin-top: 26px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
   .closing .regards { font-size: 14.5px; line-height: 1.6; }
   .closing .signature { font: 500 34px/1 var(--hand); color: var(--teal); margin-top: 6px; }
-  .closing .printed { font: 500 13px/1.3 var(--rubik); color: var(--muted); margin-top: 4px; }
 
-  .links { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--rule); display: flex; flex-wrap: wrap; gap: 8px; }
-  .links a {
-    font: 500 12px/1 var(--rubik); color: var(--teal);
-    border: 1px solid var(--rule); border-radius: 999px; padding: 7px 12px;
-    display: inline-flex; align-items: center; gap: 6px;
-    transition: border-color .15s, background .15s;
-  }
-  .links a:hover { border-color: var(--accent); background: var(--accent-soft); }
-  .links a::after { content: "↗"; font-size: 11px; color: var(--accent); }
 
   /* Editing */
   [data-field] { border-radius: 3px; transition: box-shadow .15s, background .15s; }
@@ -152,7 +142,7 @@
     padding: 1px 3px; margin-left: -3px; margin-right: -3px;
   }
   body.editing [data-field]:focus { box-shadow: 0 0 0 2px var(--accent); background: rgba(26, 176, 179, .08); }
-  body.editing .contact a, body.editing .links a { pointer-events: none; }
+  body.editing .contact a { pointer-events: none; }
   body.editing .contact a span, body.editing .contact a[data-field] { pointer-events: auto; }
 
   @media (max-width: 640px) {
@@ -170,7 +160,6 @@
     body.editing [data-field] { box-shadow: none; background: none; padding: 0; margin: 0; }
     .toolbar { display: none !important; }
     .sheet { max-width: none; width: 210mm; height: 296mm; margin: 0; padding: 18mm 18mm 16mm 20mm; box-shadow: none; overflow: hidden; page-break-after: avoid; }
-    .links { display: none; }
     .sheet::before { width: 2.5mm; }
     .letter p { font-size: 11pt; line-height: 1.55; margin-bottom: 9pt; }
     .letter p.lead { font-size: 11.5pt; }
@@ -237,16 +226,8 @@
       <div data-field="thanks">Děkuji za váš čas.</div>
       <div data-field="regards">S pozdravem</div>
       <div class="signature" data-field="signature">Jaroslav Lufinka</div>
-      <div class="printed" data-field="printed">Ing. Jaroslav Lufinka</div>
     </div>
   </div>
-
-  <nav class="links" aria-label="Odkazy">
-    <a href="https://jaffator.github.io/cv/" target="_blank" rel="noopener">Životopis</a>
-    <a href="https://bit.ly/4ARiZm3" target="_blank" rel="noopener">LinkedIn</a>
-    <a href="https://bikecheck.cloud" target="_blank" rel="noopener">BikeCheck.cloud</a>
-    <a href="https://github.com/Jaffator" target="_blank" rel="noopener">GitHub</a>
-  </nav>
 
 </article>
 
@@ -494,8 +475,7 @@
     y += mm(6);
     put(field('thanks'), L, y, 'Inter', 'normal', bodyPt, C.ink); y += lh;
     put(field('regards'), L, y, 'Inter', 'normal', bodyPt, C.ink); y += lh + 5.5;
-    put(field('signature'), L, y, 'Caveat', 'normal', 26, C.teal); y += 5.5;
-    put(field('printed'), L, y, 'Rubik', 'normal', 9.5, C.muted);
+    put(field('signature'), L, y, 'Caveat', 'normal', 26, C.teal);
     return y;
   }
 
