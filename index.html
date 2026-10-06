@@ -252,7 +252,8 @@
 
 <script>
 (() => {
-  const KEY = 'cover-letter-v1';
+  const KEY = 'cover-letter-v2';
+  try { localStorage.removeItem('cover-letter-v1'); } catch (e) {}
   const fields = [...document.querySelectorAll('[data-field]')];
   const body = document.body;
   const editBtn = document.getElementById('editBtn');
@@ -264,7 +265,10 @@
 
   const defaults = {};
   fields.forEach(el => { defaults[el.dataset.field] = el.innerHTML; });
+  const isBlank = html => !html.replace(/<br\s*\/?>|&nbsp;|\s/g, '');
 
+  // Only fields the user actually changed are stored, so a new default text
+  // from the repository shows up everywhere the user has not edited.
   function load() {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
@@ -272,7 +276,7 @@
     let changed = false;
     fields.forEach(el => {
       const v = saved[el.dataset.field];
-      if (typeof v === 'string' && v !== el.innerHTML) { el.innerHTML = v; changed = true; }
+      if (typeof v === 'string' && !isBlank(v) && v !== el.innerHTML) { el.innerHTML = v; changed = true; }
     });
     return changed;
   }
@@ -280,8 +284,14 @@
   let timer;
   function save() {
     const data = {};
-    fields.forEach(el => { data[el.dataset.field] = el.innerHTML; });
-    try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+    fields.forEach(el => {
+      const v = el.innerHTML;
+      if (v !== defaults[el.dataset.field] && !isBlank(v)) data[el.dataset.field] = v;
+    });
+    try {
+      if (Object.keys(data).length) localStorage.setItem(KEY, JSON.stringify(data));
+      else localStorage.removeItem(KEY);
+    } catch (e) {}
     flash('Uloženo v prohlížeči');
   }
   function flash(msg) {
@@ -299,8 +309,10 @@
         if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
       } else {
         el.contentEditable = 'false';
+        if (isBlank(el.innerHTML)) el.innerHTML = defaults[el.dataset.field];
       }
     });
+    if (!on) save();
     editBtn.hidden = on;
     doneBtn.hidden = !on;
     resetBtn.hidden = !on;
