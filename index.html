@@ -123,9 +123,9 @@
   }
 
   /* Letter body */
-  .letter p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.65; }
-  .letter p.salutation { font-weight: 500; margin-bottom: 16px; }
-  .letter p.lead { font-size: 15.5px; text-indent: 2.2em; }
+  .letter p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.65; text-indent: 2.2em; }
+  .letter p.salutation { font-weight: 500; margin-bottom: 16px; text-indent: 0; }
+  .letter p.lead { font-size: 15.5px; }
 
   /* Closing */
   .closing { margin-top: 26px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
@@ -474,7 +474,7 @@
     paras.forEach((name, i) => {
       const el = document.querySelector('[data-field="' + name + '"]');
       const size = i === 0 ? bodyPt + 0.5 : bodyPt;
-      y = paragraph(doc, el, L, y, W, size, lh, C.ink, i === 0 ? mm(size) * 2.2 : 0);
+      y = paragraph(doc, el, L, y, W, size, lh, C.ink, mm(size) * 2.2);
       y += gap;
     });
 
